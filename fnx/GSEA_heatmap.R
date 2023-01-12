@@ -94,17 +94,28 @@ heatmap_input = dfc.dots[,-1]
   
   anolist<-list()
   catlist<-unique(BBDD_temp[,sel_columnToFilterGroups])
-  
+  catlist
+  # ##### Ask if Collapse categories ######
+  unique(BBDD_temp$gs_name)
   # ##### Collapse categories TODO ######
-  # ask_collapse<-data.frame(cbind(Actual=catlist),fusion="")
-  # #rownames(ask_collapse)<-catlist
-  # fix(ask_collapse)
-  # to_collapse<-ask_collapse[which(ask_collapse$fusion!=""),]
-  # #unique(BBDD_temp[which(BBDD_temp[,sel_columnToFilterGroups] %in% to_collapse),c("gene_symbol")])
-  # #BBDD_temp[which(ask_collapse$fusion!=""),sel_columnToFilterGroups]<-
-  # BBDD_temp[to_collapse[,1],sel_columnToFilterGroups]<-paste0("FUSION:",BBDD_temp[which(ask_collapse$fusion!=""),sel_columnToFilterGroups],sep="\n",collapse="")
-  # BBDD_temp[to_collapse[,1],sel_columnToFilterGroups]<-paste0("FUSION:",BBDD_temp[which(ask_collapse$fusion!=""),sel_columnToFilterGroups],sep="\n",collapse="")
-  # 
+  ask_collapse<-data.frame(cbind(Actual=catlist),fusion="")
+  #rownames(ask_collapse)<-catlist
+  fix(ask_collapse)
+  ask_collapse[,1]
+  var_fusion<-ask_collapse[,2]
+  var_fusion<-unique(var_fusion[grepl("\\S",var_fusion)])
+  var_fusion
+  
+  for (i in 1:length(var_fusion)){
+    to_collapse<-ask_collapse[which(ask_collapse$fusion==var_fusion[i]),]
+    BBDD_temp[BBDD_temp[,sel_columnToFilterGroups] %in% to_collapse[,1],sel_columnToFilterGroups]<-paste0(to_collapse[,1],sep=",\n",collapse="")
+  }
+  length(unique(BBDD_temp$gs_name))
+  #re-define catlist
+  catlist<-unique(BBDD_temp[,sel_columnToFilterGroups])
+  
+  
+  
   #catlist<-catlist[-1]
   ask_annotation<-c("Elegir Set de colores:"="Paired/Set1/Set2")
   fix(ask_annotation)
@@ -124,7 +135,6 @@ heatmap_input = dfc.dots[,-1]
     table(df[,2])
     df[df[,1]!=catlist[j],1]<-""
     
-    #
     auxi<-data.frame(cbind(gene_symbol=colnames(heatmap_input),gs_subcat=""))
    # df<-full_join(df,auxi,keep=F)
     df<-left_join(df,auxi,keep=F)
@@ -140,6 +150,7 @@ heatmap_input = dfc.dots[,-1]
     
     df$gs_subcat<-paste0(str_to_title(sub("(.*?)\\s(.*)","\\1",tolower(gsub("\\_"," ",sub("(.*?)\\_(.*)","\\2 (\\1)",df$gs_subcat))))),
            " ",sub("(.*?)\\s(.*)","\\2",tolower(gsub("\\_"," ",sub("(.*?)\\_(.*)","\\2 (\\1)",df$gs_subcat)))))
+    
     #Split into several spaces
     df<-df %>% mutate(gs_subcat= sapply(gs_subcat, function(x) paste(strwrap(x, 30), collapse = "\n")))
     
