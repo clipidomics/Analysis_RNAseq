@@ -179,7 +179,7 @@ heatmap_input = dfc.dots[,-1]
   aux_df<-list()
   #BBDD_temp_copy<-BBDD_temp
   for(j in 1:length(catlist)){
-    #j=2
+    #j=3
     ### filtering by each posible category from selected column
     #x=unique(BBDD_temp[,sel_columnToFilterGroups])[2]
     df<-BBDD_temp[BBDD_temp$gene_symbol %in% colnames(heatmap_input),c(2,4)]
@@ -192,69 +192,26 @@ heatmap_input = dfc.dots[,-1]
     table(df[,2])
     df[df[,1]!=catlist[j],1]<-""
  
-    auxi<-data.frame(cbind(gene_symbol=colnames(heatmap_input),gs_subcat=""))
+    auxi<-data.frame(cbind(gene_symbol=colnames(heatmap_input),""))
     df<-left_join(df,auxi,keep=F)
     df<- df %>% distinct(gene_symbol, .keep_all = TRUE)
     
+    
+    #colnames(heatmap_input) %in% df[,2]
+  #df1<-df[match(colnames(heatmap_input),df$gene_symbol),]
+
     ##Auxiliar table
     #aux_df<-list()
     aux_df[[j]]<-c(df)
     names(aux_df)[j]<-catlist[j]
-    
-    
-   # aux_df[[j]]==df$gene_symbol  
-    
-    # df$gs_subcat<-paste0(str_to_title(sub("(.*?)\\s(.*)","\\1",tolower(gsub("\\_"," ",sub("(.*?)\\_(.*)","\\2 (\\1)",df$gs_subcat))))),
-    #        " ",sub("(.*?)\\s(.*)","\\2",tolower(gsub("\\_"," ",sub("(.*?)\\_(.*)","\\2 (\\1)",df$gs_subcat)))))
-    # 
-   
-    #Split into several spaces
-    
-    #df<-df %>% mutate(gs_subcat= sapply(gs_subcat, function(x) paste(strwrap(x, 50), collapse = "\n")))
-    
-     ## creating dataframe for format selection
-    #ask_annotation=data.frame()
-    #color_list=c("YlOrBr","Greens","Blues","Oranges","YlGnBu","OrRd","PuBu","Reds")
-    #color_list=rep(rownames(brewer.pal.info)[c(1,3,5,6,7,8,9,10,12,14,16,18,20,22,24,26)],times=2)
-    #color_list=rep(c("Set1","Set3"),times=5)
-    #class_list=str_to_title(tolower(str_sub(sub(".*?\\_","",c(unique(BBDD_temp[,sel_columnToFilterGroups])))))
     #class_list=c(unique(BBDD_temp[,sel_columnToFilterGroups]))
-    
-    #   ### asking defaults
-    #   ask_annotation=rbind(ask_annotation,
-    #                        cbind("Annotation parameter"=c(paste0(" annotation choose base color:"),
-    #                                                       paste0(" annotation name:"),
-    #                                                       paste0(" annotation color levels 1-9:")),
-    #                              Choices=c(color_list[(j)],
-    #                                       str_sub(class_list[(j)],1,50), 
-    #                                        #str_sub(gsub("HALLMARK_|WP|REACTOME|KEEG","", class_list[(j)]),1,50),
-    #                                       #str_to_title(tolower(str_sub(sub(".*?\\_","", class_list[(j)]),1,50))),
-    #                                        "5,7,9"))
-    #                        
-    #   )
-    #   
-    #   
-    # 
-    # #print(lapply(df,unique)[-1])
-    # 
-    # ## select color for each option
-    # fix(ask_annotation)
-    # ask_annotation$Choices=as.character(ask_annotation$Choices)
-    # 
-    # 
-    # ## creating color pallete and anotation for second clasification 
-    # 
-    # escala_x1=c(brewer.pal(9,ask_annotation[1,2])[as.numeric(str_split(ask_annotation[3,2],",",simplify = T)[1:length(unique(df[,1]))])])
-    # names(escala_x1)=c(unique(df[,1])[order(unique(df[,1]))])
-    # escala_x1[which(names(escala_x1)!=class_list[(j)])]="white"
-    #  
     # Easier alternative
     aux_scale<-unlist(lapply(seq_len(length(ask_annotation)),function(i){
       c(brewer.pal(brewer.pal.info[ask_annotation[i],]$maxcolors,ask_annotation[i]))}))
     escala_x1<-c("white",aux_scale[j])
     names(escala_x1)=c(unique(df[,1])[order(unique(df[,1]))])
     #names(escala_x1)[2]<-str_to_title(tolower(gsub("\\_"," ",sub("(.*?)\\_(.*)","\\2 (\\1)",names(escala_x1)[2]))))
-    
+    #escala_x1[which(names(escala_x1)!=ask_annotation[2,2])]="white"
     ## saving annotation    
     anolist[[j]]<-rowAnnotation(Category = df[,1],
                           col = list(Category=escala_x1),
@@ -264,7 +221,7 @@ heatmap_input = dfc.dots[,-1]
                           name = names(escala_x1)[2],
                           #name = j,
                           #width=unit(5,"mm"),
-                          # annotation_label=class_list[(j)]
+                          #annotation_label=catlist[j],
                           annotation_label=as.character(j),
                           annotation_name_rot = 0,
                           annotation_name_side = "top"
