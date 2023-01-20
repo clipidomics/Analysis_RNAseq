@@ -1237,6 +1237,7 @@ PCA_analysis<-function(t_esp.i,casos,medidas,groupVar,rotate=F,invert=F){
 
 #### graficas pvalue
 summaryRES_PACK_2<-function(dfc_obj, digitos=2, varTOcast, lipidclassColName=NULL, estat="media_se",my_comparisons,salto=1.1){
+  
   #funcion recibe un objeto dfc y requiere columna "variable" para las classes
   #digitos=2 numero de digitos de redondeo
   #varTOcast nombre del la variable que agrupa los casos segun tratamiento
@@ -1265,7 +1266,7 @@ summaryRES_PACK_2<-function(dfc_obj, digitos=2, varTOcast, lipidclassColName=NUL
   #      file = "summaryRES_PACK_2.Rdata",
   #      envir = environment())
   # load("summaryRES_PACK_2.Rdata")
-  
+  browser()
   if (is.na(my_comparisons)) {
     my_groups<-unique(dfc_obj[,1])
     dfx<-expand.grid(my_groups,my_groups,stringsAsFactors = T)
@@ -1284,6 +1285,7 @@ summaryRES_PACK_2<-function(dfc_obj, digitos=2, varTOcast, lipidclassColName=NUL
   p.y.position=list()
   ## Comparaciones por pares 
   for (i in 1:length(my_comparisons)){  
+    browser()
     #i=1
     MEAN1<-dfc_obj[which(dfc_obj[,varTOcast] %in% my_comparisons[[i]][,1]),"value"]  
     MEAN2<-dfc_obj[which(dfc_obj[,varTOcast] %in% my_comparisons[[i]][,2]),"value"]
@@ -1351,11 +1353,14 @@ summaryRES_PACK_2<-function(dfc_obj, digitos=2, varTOcast, lipidclassColName=NUL
   p_table$group2<-sub("(.*)(_vs_)(.*)","\\3",p_table[,2])
   #colnames(p_y.position)=colnames(p_table)[c(1,3)]
   p_table<-unique(merge(p_table,p_y.position,by=c("V1","variable")))
-  p_table$p.signif<-ifelse(p_table$value.x<=0.0001,"****",
-                           ifelse(p_table$value.x<=0.001,"***",
-                                  ifelse(p_table$value.x<=0.01,"**",
-                                         ifelse(p_table$value.x<0.05,"*","ns")
-                                  )))
+  p_table$value.x<-as.numeric(p_table$value.x) #Fix error
+  p_table$p.signif<-ifelse(is.na(p_table$value.x),"ns",
+                           ifelse(p_table$value.x<=0.0001,"****",
+                                  ifelse(p_table$value.x<=0.001,"***",
+                                         ifelse(p_table$value.x<=0.01,"**",
+                                                ifelse(p_table$value.x<0.05,"*",
+                                                       ifelse(p_table$value.x>0.1,"ns",p_table$value.x)
+                                                )))))
   colnames(p_table)<-c("supp",".y.","p.format","group1","group2","y.position","p.signif")
   p_table$.y.<-"value"
   #p_table<<-p_table

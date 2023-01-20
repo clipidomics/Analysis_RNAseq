@@ -458,6 +458,29 @@ isotopic_correction_type1 <-
     
     return(rsALL.isotopic)
   }
+
+gridFtable <- function(d, pd = 4, fontsize = 10, fontfamily = "PT Mono") {
+  
+  ## set plot theme
+  t1 <- ttheme_default(padding = unit(c(pd, pd), "mm"), base_size = fontsize, base_family = fontfamily)
+  
+  ## character table with added row and column names
+  extended_matrix <- cbind(c("", rownames(d)), rbind(colnames(d), as.matrix(d)))
+  
+  ## get grob values
+  g <- tableGrob(extended_matrix, theme = t1)
+  
+  ## convert widths from grobwidth to inch
+  widthsIn <- lapply(g$widths, function(x) {convertUnit(x, unitTo = "inch", valueOnly = TRUE)})
+  heigthsIn <- lapply(g$heights, function(x) {convertUnit(x, unitTo = "inch", valueOnly = TRUE)})
+  
+  ## calculate width and height of the table
+  w <- sum(unlist(widthsIn)) - 1*convertUnit(unit(pd, "mm"), unitTo = "inch", valueOnly = TRUE)
+  h <- sum(unlist(heigthsIn)) - 1*convertUnit(unit(pd, "mm"), unitTo = "inch", valueOnly = TRUE)
+  
+  return(list(grobData = g, data = d, width = w, heigth = h, theme = t1))
+}
+
 options(scipen=999) #set scientific notation off
 #options(scipen=0) #set scientific notation on
 options(digits=5) #set the number of digits default is 7
