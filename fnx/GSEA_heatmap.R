@@ -1,23 +1,25 @@
-#preparamos los datos
-normalizeTo1 = function(inputData){
+
+normalizeTo1<-function(inputData,normalizebygroup){
   
-  inputData=data.frame(inputData)
+  inputData=data.frame(inputData,stringsAsFactors = F)
   ## creamos grupos
   temp=cbind(ID=rownames(inputData),
              GROUP=gsub("(^.*)\\_(.*)","\\1",rownames(inputData)),
              inputData)
   ## seleccionamos el que vamos a utilizar para normalizar
-  normalizeGroup=selectOption(as.character(unique(temp$GROUP)),name="Reference")
-  normalizeGroup=paste0(normalizeGroup,collapse="|")
+  if (missing(normalizebygroup)){
+    normalizeGroup=selectOption(as.character(unique(temp$GROUP)),name="Reference")
+    normalizeGroup=paste0(normalizeGroup,collapse="|")
+  } else (normalizeGroup=normalizebygroup)
   ## definimos la funcion que nos va a hacer la normalizaci?n con filas correspondientes al grupo seleccionado
-  normalizeTo1=function(colValues,
+  Norm_by_group=function(colValues,
                         refRow=grep(normalizeGroup,temp$ID)){
     colValues=colValues*(1/my.mean(colValues[refRow]))
     return(colValues)
   }
   #aplicamos la transformacion
-  temp[,-c(1,2)]=temp%>%summarise_if(is.numeric,normalizeTo1)
-  return(temp[,-c(1,2)])
+  temp[,-c(1,2)]=temp%>%summarise_if(is.numeric,Norm_by_group)
+ return(temp%>%select(-c("ID","GROUP")))
 }
 
 
@@ -29,12 +31,14 @@ library(ComplexHeatmap)
 library(cluster)
 library(circlize) #generar colores
 
+####
+# collapsedPathways <- collapsePathways(gsea.M[order(pval)][padj <= set_GSEA_threshold], 
+#                                       M.ensembl.ls, FC.vec)
+# mainPathways <- gsea.M[pathway %in% collapsedPathways$mainPathways][
+#   order(-NES), pathway]
 
-#manual
-#browseURL("https://jokergoo.github.io/ComplexHeatmap-reference/book/heatmap-annotations.html#horizon-chart-annotation")
 
-
-gsea.M.sig<-gsea.M %>% 
+gsea.M.sig<-gsea.M %>% #filter(pathway %in% mainPathways)   %>% 
   filter(padj <= set_GSEA_threshold)  ##Filltro genes en pathways significativas
 # Get genes associated with pathway
 M.in_pathway<-M[M$gs_name %in% gsea.M.sig$pathway,] 
@@ -59,7 +63,7 @@ FC_padj<-0.05
 # Subset the significant results
 M.in_pathway.subset.sig <- dplyr::filter(M.in_pathway.subset, padj < FC_padj) %>%
   dplyr::arrange(padj)
-
+#M.in_pathway.subset.sig<-M.in_pathway.subset
 # # Set thresholds for log2fc_cutoff
 # Heat_log2fc_cutoff <- 0.58
 # M.in_pathway.subset.sig <- dplyr::filter(M.in_pathway.subset, log2FoldChange >= Heat_log2fc_cutoff | log2FoldChange <= -Heat_log2fc_cutoff) %>%
@@ -67,10 +71,10 @@ M.in_pathway.subset.sig <- dplyr::filter(M.in_pathway.subset, padj < FC_padj) %>
 
 # Check significant genes output
 M.in_pathway.subset.sig 
-unique(M.in_pathway.subset.sig $gs_name)
+unique(M.in_pathway.subset.sig$gs_name)
 ## Get list of genes in pathway
 Genes_sig_in_pathway<-c(M.in_pathway.subset.sig$gene_symbol)
-
+Genes_sig_in_pathway
 #subset<-data.frame(M.in_pathway.join[M.in_pathway.join$gs_cat %in% c("ToxPanel"),])
 
 ###HEATMAP
@@ -82,6 +86,7 @@ mat<-mat.all[rownames(mat.all) %in% Genes_sig_in_pathway,]
 
 
 #------------------------ BEGIN ANALYSIS HEATMAP ----------------------------
+
 
 inputData<-data.frame(t(mat))
 
@@ -128,7 +133,20 @@ heatmap_input = dfc.dots[,-1]
   
   ## matching to database
   BBDD_temp=data.frame(M.in_pathway.subset.sig)
+  #Filter BBDD_temp for genes in heatmap_input only
+  BBDD_temp<-BBDD_temp[which(BBDD_temp$gene_symbol %in% colnames(heatmap_input)),]
   unique(BBDD_temp$gene_symbol) %in% colnames(heatmap_input)
+  # BBDD_genSig<-unique(BBDD_temp$gene_symbol)
+  # heatmap_genes<-colnames(heatmap_input)
+  # 
+  # BBDD_genSig %in% heatmap_genes
+  # heatmap_genes %in%  BBDD_genSig 
+  
+  ## Filter heatmpa fo  genes in BBDD_temp only 
+  #heatmap_input<-heatmap_input[,!is.na(match(unique(BBDD_temp$gene_symbol),colnames(heatmap_input)))]
+  heatmap_input<-heatmap_input[,unique(BBDD_temp$gene_symbol)]
+  
+  if(sum(unique(BBDD_temp$gene_symbol) %in% colnames(heatmap_input)==colnames(heatmap_input) %in% unique(BBDD_temp$gene_symbol))>0) print("------TODO CORRECTO------") else ("REVISA heatmap_input &  M.in_pathway.subset.sig")
   
   ### FILTRAR LOS GRUPOS
   sel_columnToFilterGroups=selectOption(colnames(BBDD_temp),"ColumnForGroupFilter",toRemove=F)
@@ -158,31 +176,57 @@ heatmap_input = dfc.dots[,-1]
   var_fusion<-unique(var_fusion[grepl("\\S",var_fusion)])
   var_fusion
   
+  ### DEBUG FROM HERE   ####
+  ## Variables
+  # BBDD_temp_copy<-BBDD_temp
+  # mat_copy<-mat
+  # heatmap_input_copy<-heatmap_input
+  # heatmap_base_color_copy<-heatmap_base_color
+  # sel_columnToFilterGroups_copy<-sel_columnToFilterGroups
+  #   
+  # BBDD_temp<-BBDD_temp_copy
+  # mat<-mat_copy
+  # heatmap_input<-heatmap_input_copy
+  # heatmap_base_color<-heatmap_base_color_copy
+  # sel_columnToFilterGroups<-sel_columnToFilterGroups_copy
+
+
+  
   for (i in 1:length(var_fusion)){
     to_collapse<-ask_collapse[which(ask_collapse$fusion==var_fusion[i]),]
     BBDD_temp[BBDD_temp[,sel_columnToFilterGroups] %in% to_collapse[,1],sel_columnToFilterGroups]<-paste0(to_collapse[,1],sep="\n",collapse="")
   }
-  length(unique(BBDD_temp$gs_name))
+  length(unique(BBDD_temp[,sel_columnToFilterGroups]))
   #delete character at end of string
   BBDD_temp[,sel_columnToFilterGroups]<-sub("\n$","",BBDD_temp[,sel_columnToFilterGroups])
   
   #re-define catlist
   catlist<-unique(BBDD_temp[,sel_columnToFilterGroups])
+  catlist
+  #re-define heatmap_input
+  unique(BBDD_temp$gene_symbol)
   
-  
+  #heatmap_input[,unique(BBDD_temp$gene_symbol) %in% colnames(heatmap_input)]
+  heatmap_input<-heatmap_input[,unique(BBDD_temp$gene_symbol)]
+  #heatmap_input<-heatmap_input[,!is.na(match(unique(BBDD_temp$gene_symbol),colnames(heatmap_input)))]
   
   #catlist<-catlist[-1]
-  ask_annotation<-c("Elegir Set de colores:"="Paired/Set1/Set2")
+  #dev.new()
+  display.brewer.all()
+  ask_annotation<-c("Elegir Set de colores:"="Paired/Dark2/Set2/Pastel2")
   fix(ask_annotation)
   ask_annotation<-unlist(str_split(ask_annotation,pattern = "/"))
   
   aux_df<-list()
-  #BBDD_temp_copy<-BBDD_temp
+  
   for(j in 1:length(catlist)){
-    #j=3
+    #j=1
     ### filtering by each posible category from selected column
     #x=unique(BBDD_temp[,sel_columnToFilterGroups])[2]
-    df<-BBDD_temp[BBDD_temp$gene_symbol %in% colnames(heatmap_input),c(2,4)]
+    col_df=c(sel_columnToFilterGroups,"gene_symbol")
+   # df<-BBDD_temp[BBDD_temp$gene_symbol %in% colnames(heatmap_input),c(3,4)]
+    df<-BBDD_temp[BBDD_temp$gene_symbol %in% colnames(heatmap_input),col_df]
+    
     #distinct(df$gene_symbol)
     df<- df %>% distinct(gene_symbol, .keep_all = TRUE)
     
@@ -191,14 +235,16 @@ heatmap_input = dfc.dots[,-1]
     
     table(df[,2])
     df[df[,1]!=catlist[j],1]<-""
- 
-    auxi<-data.frame(cbind(gene_symbol=colnames(heatmap_input),""))
-    df<-left_join(df,auxi,keep=F)
-    df<- df %>% distinct(gene_symbol, .keep_all = TRUE)
-    
+    # 
+    # auxi<-data.frame(cbind(gene_symbol=colnames(heatmap_input),""))
+    # colnames(auxi)[2]<-sel_columnToFilterGroups
+    # df<-left_join(df,auxi,keep=F)
+    # df<- df %>% distinct(gene_symbol, .keep_all = TRUE)
+    # # 
     
     #colnames(heatmap_input) %in% df[,2]
-  #df1<-df[match(colnames(heatmap_input),df$gene_symbol),]
+  
+    df<-df[match(colnames(heatmap_input),df$gene_symbol),] #PROBLEMATIC LINE INDUCE ERRORS!!!
 
     ##Auxiliar table
     #aux_df<-list()
@@ -234,6 +280,10 @@ heatmap_input = dfc.dots[,-1]
   }
 
  names(aux_df)
+ Cat_table<-lapply(seq_len(length(aux_df)), function(i){
+   aux_df[[i]][[1]]
+ })
+ Cat_table<-data.frame(cbind(gene_symbol=aux_df[[1]][[2]],do.call(cbind,Cat_table)))
  
   
 construct_annotation<-unlist(lapply(seq_len(length(anolist)), function(i){
@@ -244,7 +294,7 @@ construct_annotation<-unlist(lapply(seq_len(length(anolist)), function(i){
 #### HEATMAP SIMPLE #####
 selection=selectOption(unique(gsub("(.*)\\D(\\d+$)","\\1",rownames(heatmap_input))),"toRemove",toRemove = T)
   
-heatmap_input = dfc.dots[,-1]
+#heatmap_input = dfc.dots[,-1]
 heatmap_input = t(scale((heatmap_input)))
 
 rownames(heatmap_input) %in% aux_df[[1]][[2]] 
@@ -252,7 +302,7 @@ rownames(heatmap_input) %in% aux_df[[1]][[2]]
 #Adjust number of rows to selected gene_name categories TODO: See what happened with other criteria  
 #heatmap_input<-heatmap_input[rownames(heatmap_input) %in% BBDD_temp[BBDD_temp$gs_name %in% catlist,"gene_symbol"],]
 
-heatmap_input<-heatmap_input[rownames(heatmap_input) %in% aux_df[[1]][[2]],]
+#heatmap_input<-heatmap_input[rownames(heatmap_input) %in% aux_df[[1]][[2]],]
 #match(rownames(heatmap_input), aux_df[[1]][[2]])
 
 #### ordenar las clases
@@ -289,9 +339,9 @@ heatmap_input[is.na(heatmap_input)]=0
 heatmap_input[is.nan(heatmap_input)]=0
 
 
-htmp<-Heatmap(heatmap_input,
+plot_htmp<-Heatmap(heatmap_input,
           name = "log2FC",
-          width=ncol(heatmap_input)*unit(15,"mm"),
+          width=ncol(heatmap_input)*unit(7,"mm"),
           height=nrow(heatmap_input)*unit(3,"mm"),
           border_gp = gpar(col = "darkgrey", lty = 1,alpha=1),
           rect_gp = gpar(col = "white", lwd = .2,lty = 1),
@@ -346,21 +396,35 @@ htmp<-Heatmap(heatmap_input,
           row_title_rot = 0
           
   )
-
-
-png(paste0(directory,"/Figures/HeatMap_aux_test_",as.numeric(Sys.time()),".png"),
-    width = 40, height = 40, units = "cm", res = 200)
-print(draw(htmp, heatmap_legend_side="bottom", annotation_legend_side="right",
+heigth_heatmap<-length(rownames(heatmap_input))*0.55
+png(paste0(directory,"/Figures/",select_type,"_",deparse(substitute(htmp)),"_",gsub("[^A-z0-9]","",Sys.time()),".png"),
+  #paste0(directory,"/Figures/HeatMap_aux_test_",as.numeric(Sys.time()),".png"),
+    width = 40, height = heigth_heatmap, units = "cm", res = 200)
+print(draw(plot_htmp, heatmap_legend_side="bottom", annotation_legend_side="right",
            legend_grouping = "original")
 )
- dev.off()
+dev.off()
+
+#Save as .svg file
+
+svglite(filename=paste0(directory,"/Figures/",select_type,"_",deparse(substitute(htmp)),"_",gsub("[^A-z0-9]","",Sys.time()),".svg"),
+        width = 20/2.54, height = heigth_heatmap/2.54, scaling=1)
+        plot(draw(plot_htmp, heatmap_legend_side="bottom", annotation_legend_side="top",
+             legend_grouping = "original")  
+             )
+dev.off()
+
+
+# ff<-draw(plot_htmp, heatmap_legend_side="bottom", annotation_legend_side="right",
+#      legend_grouping = "original")
+# ggsave( ff,filename = paste0(directory,"/Figures/",select_type,"_",deparse(substitute(htmp)),"_",gsub("[^A-z0-9]","",Sys.time()),".svg"),
+#        width = 40, height = 10, dpi = 600, units = "cm", device='svg')      
+
 browseURL(paste0(directory))
 
-
-Cat_table<-lapply(seq_len(length(aux_df)), function(i){
-   aux_df[[i]][[1]]
-  })
-Cat_table<-data.frame(cbind(gene_symbol=aux_df[[1]][[2]],do.call(cbind,Cat_table)))
-rownames(Cat_table)<-aux_df[[1]][[2]]
+#--------------CALL INDIVIDUAL GENES PLOT --------------##
+source("fnx/GSEA_plot_individual_genes.R")
+#--------------CALL INDIVIDUAL GENES PLOT --------------##
+#rownames(Cat_table)<-aux_df[[1]][[2]]
 
 
